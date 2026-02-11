@@ -1,0 +1,7 @@
+{
+  "name": "HTM-VBS: Hospital Transport Management",
+  "description": "An enterprise-grade hospital vehicle booking and management system with role-based access, approval workflows, and real-time scheduling.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
