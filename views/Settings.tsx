@@ -1,11 +1,12 @@
 
 import React, { useState, useEffect } from 'react';
 import { HTMService } from '../store';
-import { User, UserRole } from '../types';
+import { User, UserRole, Department } from '../types';
 import { Icons } from '../constants';
 
 export const Settings: React.FC = () => {
   const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [showAddUser, setShowAddUser] = useState(false);
   const [formData, setFormData] = useState({
     name: '',
@@ -15,22 +16,29 @@ export const Settings: React.FC = () => {
   });
 
   useEffect(() => {
-    refreshUsers();
+    // Properly initialize state with awaited data
+    const init = async () => {
+      const d = await HTMService.getDepartments();
+      setDepartments(d);
+      await refreshUsers();
+    };
+    init();
   }, []);
 
-  const refreshUsers = () => {
-    setUsers(HTMService.getAllUsers());
+  // Updated to async to properly await the promise from HTMService.getAllUsers()
+  const refreshUsers = async () => {
+    const allUsers = await HTMService.getAllUsers();
+    setUsers(allUsers);
   };
 
-  const handleCreateUser = (e: React.FormEvent) => {
+  // Updated to async to handle the promise returned by createUser
+  const handleCreateUser = async (e: React.FormEvent) => {
     e.preventDefault();
-    HTMService.createUser(formData);
+    await HTMService.createUser(formData);
     setShowAddUser(false);
     setFormData({ name: '', email: '', role: UserRole.STAFF, departmentId: 'dept-1' });
-    refreshUsers();
+    await refreshUsers();
   };
-
-  const departments = HTMService.getDepartments();
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500">
@@ -86,6 +94,7 @@ export const Settings: React.FC = () => {
                   </td>
                   <td className="px-6 py-5">
                     <span className="text-sm font-semibold text-slate-600">
+                      {/* Use the departments state which was fetched in useEffect */}
                       {departments.find(d => d.id === user.departmentId)?.name || 'N/A'}
                     </span>
                   </td>
@@ -195,6 +204,7 @@ export const Settings: React.FC = () => {
                       value={formData.departmentId}
                       onChange={e => setFormData({...formData, departmentId: e.target.value})}
                     >
+                      {/* Use the departments state which was fetched in useEffect */}
                       {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
                     </select>
                   </div>

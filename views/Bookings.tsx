@@ -1,11 +1,12 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { HTMService } from '../store';
-import { BookingStatus, PriorityLevel, VehicleType } from '../types';
+import { BookingStatus, PriorityLevel, VehicleType, Booking } from '../types';
 import { Icons } from '../constants';
 
 export const Bookings: React.FC = () => {
   const [showNewBooking, setShowNewBooking] = useState(false);
+  const [bookings, setBookings] = useState<Booking[]>([]);
   const [formData, setFormData] = useState({
     purpose: '',
     pickupLocation: '',
@@ -19,16 +20,23 @@ export const Bookings: React.FC = () => {
     equipmentDescription: '',
   });
 
-  const bookings = HTMService.getBookings();
+  useEffect(() => {
+    refreshData();
+  }, []);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const refreshData = async () => {
+    const b = await HTMService.getAuthorizedBookings();
+    setBookings(b);
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    HTMService.createBooking({
+    await HTMService.createBooking({
       ...formData,
       endTime: new Date(new Date(formData.startTime).getTime() + parseInt(formData.duration) * 3600000).toISOString()
     });
     setShowNewBooking(false);
-    // Reset form
+    refreshData();
   };
 
   return (

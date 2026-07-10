@@ -1,20 +1,34 @@
 
 import React, { useState, useEffect } from 'react';
 import { HTMService } from '../store';
-import { Booking, BookingStatus, PriorityLevel } from '../types';
+import { Booking, BookingStatus, PriorityLevel, User, Department } from '../types';
 import { Icons } from '../constants';
 
 export const Approvals: React.FC = () => {
   const [pending, setPending] = useState<Booking[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
   const [confirmingAction, setConfirmingAction] = useState<{ id: string, type: 'approve' | 'reject' } | null>(null);
 
   useEffect(() => {
-    refreshList();
+    // Correctly fetch data on mount using async function within useEffect
+    const initData = async () => {
+      const [u, d] = await Promise.all([
+        HTMService.getAllUsers(),
+        HTMService.getDepartments()
+      ]);
+      setUsers(u);
+      setDepartments(d);
+      await refreshList();
+    };
+    initData();
   }, []);
 
-  const refreshList = () => {
+  // Updated to async to properly await the promise from HTMService.getBookings()
+  const refreshList = async () => {
     const user = HTMService.getCurrentUser();
-    const all = HTMService.getBookings();
+    if (!user) return;
+    const all = await HTMService.getBookings();
     // Respective dept head has full authority for their department only
     setPending(all.filter(b => 
       b.status === BookingStatus.REQUESTED && 
@@ -22,14 +36,15 @@ export const Approvals: React.FC = () => {
     ));
   };
 
-  const handleAction = (id: string, approve: boolean) => {
-    HTMService.updateBookingStatus(id, approve ? BookingStatus.APPROVED : BookingStatus.CANCELLED);
+  // Updated to async to handle the promise returned by updateBookingStatus
+  const handleAction = async (id: string, approve: boolean) => {
+    await HTMService.updateBookingStatus(id, approve ? BookingStatus.APPROVED : BookingStatus.CANCELLED);
     setConfirmingAction(null);
-    refreshList();
+    await refreshList();
   };
 
-  const departments = HTMService.getDepartments();
-  const currentDept = departments.find(d => d.id === HTMService.getCurrentUser().departmentId);
+  const currentUser = HTMService.getCurrentUser();
+  const currentDept = departments.find(d => d.id === currentUser?.departmentId);
 
   return (
     <div className="space-y-6">
@@ -77,7 +92,8 @@ export const Approvals: React.FC = () => {
                               <img src={`https://picsum.photos/seed/${booking.requesterId}/50/50`} alt="" />
                            </div>
                            <span className="text-xs font-semibold text-slate-600">
-                             Requested by: {HTMService.getAllUsers().find(u => u.id === booking.requesterId)?.name || 'Personnel'}
+                             {/* Use the users state which was fetched in useEffect */}
+                             Requested by: {users.find(u => u.id === booking.requesterId)?.name || 'Personnel'}
                            </span>
                         </div>
                       </div>

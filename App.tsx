@@ -1,7 +1,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { Layout } from './components/Layout';
-import { UserRole } from './types';
+import { UserRole, User } from './types';
 import { Dashboard } from './views/Dashboard';
 import { Bookings } from './views/Bookings';
 import { Approvals } from './views/Approvals';
@@ -13,20 +13,30 @@ import { Drivers } from './views/Drivers';
 import { HTMService } from './store';
 
 const App: React.FC = () => {
-  const [currentUser, setCurrentUser] = useState<any>(null);
+  const [currentUser, setCurrentUser] = useState<User | null>(null);
   const [currentView, setCurrentView] = useState('dashboard');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
+  const [users, setUsers] = useState<User[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const saved = localStorage.getItem('htm_user');
-    if (saved) {
-      const user = JSON.parse(saved);
-      setCurrentUser(user);
-      HTMService.setCurrentUser(user);
-    }
+    const initApp = async () => {
+      await HTMService.init();
+      const allUsers = await HTMService.getAllUsers();
+      setUsers(allUsers);
+
+      const saved = localStorage.getItem('htm_user');
+      if (saved) {
+        const user = JSON.parse(saved);
+        setCurrentUser(user);
+        HTMService.setCurrentUser(user);
+      }
+      setIsLoading(false);
+    };
+    initApp();
   }, []);
 
-  const handleLogin = (user: any) => {
+  const handleLogin = (user: User) => {
     setIsLoggingIn(true);
     setTimeout(() => {
       setCurrentUser(user);
@@ -41,6 +51,17 @@ const App: React.FC = () => {
     setCurrentUser(null);
     setCurrentView('dashboard');
   };
+
+  if (isLoading) {
+    return (
+      <div className="min-h-screen bg-slate-900 flex items-center justify-center">
+        <div className="flex flex-col items-center gap-4 text-center">
+           <div className="w-12 h-12 border-4 border-blue-500 border-t-transparent rounded-full animate-spin"></div>
+           <p className="text-blue-400 font-black uppercase tracking-widest text-xs">Initializing Hospital Systems</p>
+        </div>
+      </div>
+    );
+  }
 
   if (!currentUser) {
     return (
@@ -57,9 +78,9 @@ const App: React.FC = () => {
             <p className="text-slate-500 mt-3 font-medium text-sm">Enterprise Hospital Transport</p>
           </div>
 
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[400px] overflow-y-auto custom-scrollbar pr-2">
             <p className="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] text-center mb-4">Select Access Portal</p>
-            {HTMService.getAllUsers().map((user) => (
+            {users.map((user) => (
               <button
                 key={user.id}
                 disabled={isLoggingIn}

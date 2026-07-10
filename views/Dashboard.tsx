@@ -1,9 +1,9 @@
 
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import { DashboardCard } from '../components/DashboardCard';
 import { Icons } from '../constants';
 import { HTMService } from '../store';
-import { UserRole } from '../types';
+import { UserRole, Booking } from '../types';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, AreaChart, Area } from 'recharts';
 
 const data = [
@@ -17,9 +17,26 @@ const data = [
 ];
 
 export const Dashboard: React.FC = () => {
-  const stats = HTMService.getStats();
+  const [stats, setStats] = useState({ totalBookings: 0, pendingApprovals: 0, activeTrips: 0, availableVehicles: 0 });
+  const [authorizedBookings, setAuthorizedBookings] = useState<Booking[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const user = HTMService.getCurrentUser();
-  const authorizedBookings = HTMService.getAuthorizedBookings();
+
+  useEffect(() => {
+    const fetchData = async () => {
+      const [s, b, u] = await Promise.all([
+        HTMService.getStats(),
+        HTMService.getAuthorizedBookings(),
+        HTMService.getAllUsers()
+      ]);
+      setStats(s);
+      setAuthorizedBookings(b);
+      setAllUsers(u);
+    };
+    fetchData();
+  }, []);
+
+  if (!user) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
@@ -124,7 +141,7 @@ export const Dashboard: React.FC = () => {
                         <img src={`https://picsum.photos/seed/${booking.requesterId}/50/50`} alt="" />
                       </div>
                       <span className="font-semibold text-slate-700">
-                        {HTMService.getAllUsers().find(u => u.id === booking.requesterId)?.name || 'Personnel'}
+                        {allUsers.find(u => u.id === booking.requesterId)?.name || 'Personnel'}
                       </span>
                     </div>
                   </td>

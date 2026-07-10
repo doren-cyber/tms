@@ -1,10 +1,31 @@
 
+import { initializeApp } from "firebase/app";
+import { 
+  getFirestore, collection, getDocs, setDoc, doc, addDoc, updateDoc, query, where, orderBy, getDoc 
+} from "firebase/firestore";
 import { 
   User, UserRole, Booking, BookingStatus, Vehicle, Driver, Department, 
   VehicleType, PriorityLevel 
 } from './types';
 
-// Mock Data Constants
+// Firebase project configuration using environment variables
+const firebaseConfig = {
+  apiKey: import.meta.env.VITE_FIREBASE_API_KEY || "YOUR_API_KEY",
+  authDomain: import.meta.env.VITE_FIREBASE_AUTH_DOMAIN || "YOUR_PROJECT_ID.firebaseapp.com",
+  projectId: import.meta.env.VITE_FIREBASE_PROJECT_ID || "YOUR_PROJECT_ID",
+  storageBucket: import.meta.env.VITE_FIREBASE_STORAGE_BUCKET || "YOUR_PROJECT_ID.appspot.com",
+  messagingSenderId: import.meta.env.VITE_FIREBASE_MESSAGING_SENDER_ID || "YOUR_SENDER_ID",
+  appId: import.meta.env.VITE_FIREBASE_APP_ID || "YOUR_APP_ID"
+};
+
+const isFirebaseConfigured = 
+  firebaseConfig.apiKey !== "YOUR_API_KEY" && 
+  !!import.meta.env.VITE_FIREBASE_API_KEY;
+
+const app = initializeApp(firebaseConfig);
+const db = getFirestore(app);
+
+// Mock Data Constants (used for initial seeding)
 const MOCK_DEPARTMENTS: Department[] = [
   { id: 'dept-1', name: 'Emergency Services', headId: 'user-2' },
   { id: 'dept-2', name: 'Cardiology', headId: 'user-3' },
@@ -28,131 +49,167 @@ const MOCK_VEHICLES: Vehicle[] = [
 
 const MOCK_DRIVERS: Driver[] = [
   { id: 'd-1', name: 'Robert Driver', licenseNumber: 'L-001', status: 'AVAILABLE', shift: 'MORNING', phone: '+1234567890' },
-  { id: 'd-2', name: 'James Speed', licenseNumber: 'L-002', status: 'ON_DUTY', shift: 'MORNING', phone: '+1234567891' },
+  { id: 'd-2', name: 'James Speed', licenseNumber: 'L-002', status: 'AVAILABLE', shift: 'MORNING', phone: '+1234567891' },
   { id: 'd-3', name: 'Susan Wheel', licenseNumber: 'L-003', status: 'AVAILABLE', shift: 'EVENING', phone: '+1234567892' },
 ];
 
-const DEFAULT_BOOKINGS: Booking[] = [
-  {
-    id: 'b-1',
-    requesterId: 'user-1',
-    departmentId: 'dept-1',
-    purpose: 'Patient transfer to Diagnostic Center',
-    pickupLocation: 'Main Wing A',
-    dropLocation: 'Diagnostic Center',
-    startTime: new Date().toISOString(),
-    endTime: new Date(Date.now() + 3600000).toISOString(),
-    passengers: 2,
-    hasEquipment: true,
-    equipmentDescription: 'Oxygen cylinders',
-    preferredVehicleType: VehicleType.AMBULANCE,
-    priority: PriorityLevel.NORMAL,
-    status: BookingStatus.REQUESTED,
-    createdAt: new Date().toISOString(),
-  }
-];
+// In-memory fallback storage
+const localStore: { [key: string]: any[] } = {
+  users: [...MOCK_USERS],
+  vehicles: [...MOCK_VEHICLES],
+  drivers: [...MOCK_DRIVERS],
+  departments: [...MOCK_DEPARTMENTS],
+  bookings: []
+};
 
 export class HTMService {
-  private static STORAGE_KEY = 'htm_vbs_bookings';
-  private static VEHICLES_KEY = 'htm_vbs_vehicles';
-  private static DRIVERS_KEY = 'htm_vbs_drivers';
-  private static USERS_KEY = 'htm_vbs_users';
-  
-  private static _bookings: Booking[] = [];
-  private static _vehicles: Vehicle[] = [];
-  private static _drivers: Driver[] = [];
-  private static _users: User[] = [];
-  private static _currentUser: User = MOCK_USERS[0];
+  private static _currentUser: User | null = null;
 
-  static init() {
-    const storedBookings = localStorage.getItem(this.STORAGE_KEY);
-    this._bookings = storedBookings ? JSON.parse(storedBookings) : [...DEFAULT_BOOKINGS];
+  static async init() {
+    if (!isFirebaseConfigured) {
+      console.warn("Firebase not configured, using local storage fallback.");
+      const savedBookings = localStorage.getItem('htm_bookings');
+      if (savedBookings) {
+        localStore.bookings = JSON.parse(savedBookings);
+      }
+      return;
+    }
 
-    const storedVehicles = localStorage.getItem(this.VEHICLES_KEY);
-    this._vehicles = storedVehicles ? JSON.parse(storedVehicles) : [...MOCK_VEHICLES];
-
-    const storedDrivers = localStorage.getItem(this.DRIVERS_KEY);
-    this._drivers = storedDrivers ? JSON.parse(storedDrivers) : [...MOCK_DRIVERS];
-
-    const storedUsers = localStorage.getItem(this.USERS_KEY);
-    this._users = storedUsers ? JSON.parse(storedUsers) : [...MOCK_USERS];
-
-    if (!storedBookings) this.save();
-  }
-
-  private static save() {
-    localStorage.setItem(this.STORAGE_KEY, JSON.stringify(this._bookings));
-    localStorage.setItem(this.VEHICLES_KEY, JSON.stringify(this._vehicles));
-    localStorage.setItem(this.DRIVERS_KEY, JSON.stringify(this._drivers));
-    localStorage.setItem(this.USERS_KEY, JSON.stringify(this._users));
+    try {
+      const usersSnapshot = await getDocs(collection(db, "users"));
+      if (usersSnapshot.empty) {
+        console.log("Seeding database...");
+        await Promise.all([
+          ...MOCK_USERS.map(u => setDoc(doc(db, "users", u.id), u)),
+          ...MOCK_VEHICLES.map(v => setDoc(doc(db, "vehicles", v.id), v)),
+          ...MOCK_DRIVERS.map(d => setDoc(doc(db, "drivers", d.id), d)),
+          ...MOCK_DEPARTMENTS.map(d => setDoc(doc(db, "departments", d.id), d)),
+        ]);
+      }
+    } catch (error) {
+      console.error("Firebase init failed, falling back to local storage:", error);
+    }
   }
 
   static setCurrentUser(user: User) {
     this._currentUser = user;
   }
 
-  static getCurrentUser(): User {
+  static getCurrentUser(): User | null {
     return this._currentUser;
   }
 
-  static getAllUsers(): User[] {
-    if (this._users.length === 0) this.init();
-    return this._users;
+  static async getAllUsers(): Promise<User[]> {
+    if (!isFirebaseConfigured) return localStore.users;
+    try {
+      const snapshot = await getDocs(collection(db, "users"));
+      return snapshot.docs.map(doc => doc.data() as User);
+    } catch (e) {
+      return localStore.users;
+    }
   }
 
-  static createUser(userData: Partial<User>): User {
+  static async createUser(userData: Partial<User>): Promise<User> {
+    const id = `user-${Date.now()}`;
     const newUser: User = {
-      id: `user-${Date.now()}`,
+      id,
       name: userData.name || 'New User',
       email: userData.email || '',
       role: userData.role || UserRole.STAFF,
       departmentId: userData.departmentId || 'dept-1',
     };
-    this._users = [...this._users, newUser];
-    this.save();
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "users", id), newUser);
+      } catch (e) {
+        localStore.users.push(newUser);
+      }
+    } else {
+      localStore.users.push(newUser);
+    }
     return newUser;
   }
 
-  static getBookings(): Booking[] {
-    if (this._bookings.length === 0) this.init();
-    return this._bookings;
-  }
-
-  static getAuthorizedBookings(): Booking[] {
-    const user = this.getCurrentUser();
-    const all = this.getBookings();
-    
-    if (user.role === UserRole.ADMIN || user.role === UserRole.OPERATOR || user.role === UserRole.TRANSPORT_HEAD) {
-      return all;
+  static async getBookings(): Promise<Booking[]> {
+    if (!isFirebaseConfigured) return localStore.bookings;
+    try {
+      const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => doc.data() as Booking);
+    } catch (e) {
+      return localStore.bookings;
     }
-    
-    if (user.role === UserRole.DEPT_HEAD) {
-      return all.filter(b => b.departmentId === user.departmentId);
-    }
-    
-    return all.filter(b => b.requesterId === user.id);
   }
 
-  static getVehicles(): Vehicle[] {
-    if (this._vehicles.length === 0) this.init();
-    return this._vehicles;
-  }
-
-  static getDrivers(): Driver[] {
-    if (this._drivers.length === 0) this.init();
-    return this._drivers;
-  }
-
-  static getDepartments(): Department[] {
-    return MOCK_DEPARTMENTS;
-  }
-
-  static createBooking(bookingData: Partial<Booking>): Booking {
+  static async getAuthorizedBookings(): Promise<Booking[]> {
     const user = this.getCurrentUser();
-    // Special rule: if a Dept Head creates a booking for their own dept, it is auto-approved by them
+    if (!user) return [];
+
+    if (!isFirebaseConfigured) {
+      if (user.role === UserRole.ADMIN || user.role === UserRole.OPERATOR || user.role === UserRole.TRANSPORT_HEAD) {
+        return localStore.bookings;
+      } else if (user.role === UserRole.DEPT_HEAD) {
+        return localStore.bookings.filter(b => b.departmentId === user.departmentId);
+      } else {
+        return localStore.bookings.filter(b => b.requesterId === user.id);
+      }
+    }
+
+    try {
+      let q;
+      if (user.role === UserRole.ADMIN || user.role === UserRole.OPERATOR || user.role === UserRole.TRANSPORT_HEAD) {
+        q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
+      } else if (user.role === UserRole.DEPT_HEAD) {
+        q = query(collection(db, "bookings"), where("departmentId", "==", user.departmentId), orderBy("createdAt", "desc"));
+      } else {
+        q = query(collection(db, "bookings"), where("requesterId", "==", user.id), orderBy("createdAt", "desc"));
+      }
+
+      const snapshot = await getDocs(q);
+      return snapshot.docs.map(doc => doc.data() as Booking);
+    } catch (e) {
+      return this.getBookings(); // Fallback to all if query fails
+    }
+  }
+
+  static async getVehicles(): Promise<Vehicle[]> {
+    if (!isFirebaseConfigured) return localStore.vehicles;
+    try {
+      const snapshot = await getDocs(collection(db, "vehicles"));
+      return snapshot.docs.map(doc => doc.data() as Vehicle);
+    } catch (e) {
+      return localStore.vehicles;
+    }
+  }
+
+  static async getDrivers(): Promise<Driver[]> {
+    if (!isFirebaseConfigured) return localStore.drivers;
+    try {
+      const snapshot = await getDocs(collection(db, "drivers"));
+      return snapshot.docs.map(doc => doc.data() as Driver);
+    } catch (e) {
+      return localStore.drivers;
+    }
+  }
+
+  static async getDepartments(): Promise<Department[]> {
+    if (!isFirebaseConfigured) return localStore.departments;
+    try {
+      const snapshot = await getDocs(collection(db, "departments"));
+      return snapshot.docs.map(doc => doc.data() as Department);
+    } catch (e) {
+      return localStore.departments;
+    }
+  }
+
+  static async createBooking(bookingData: Partial<Booking>): Promise<Booking> {
+    const user = this.getCurrentUser();
+    if (!user) throw new Error("No user logged in");
+
+    const id = `b-${Date.now()}`;
     const isDeptHead = user.role === UserRole.DEPT_HEAD;
     const newBooking: Booking = {
-      id: `b-${Date.now()}`,
+      id,
       requesterId: user.id,
       departmentId: user.departmentId,
       purpose: bookingData.purpose || '',
@@ -168,60 +225,117 @@ export class HTMService {
       status: isDeptHead ? BookingStatus.APPROVED : BookingStatus.REQUESTED,
       createdAt: new Date().toISOString(),
     };
-    this._bookings = [newBooking, ...this._bookings];
-    this.save();
+
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "bookings", id), newBooking);
+      } catch (e) {
+        this.saveLocalBooking(newBooking);
+      }
+    } else {
+      this.saveLocalBooking(newBooking);
+    }
     return newBooking;
   }
 
-  static rescheduleBooking(bookingId: string, startTime: string, endTime: string): void {
-    this._bookings = this._bookings.map(b => 
-      b.id === bookingId ? { ...b, startTime, endTime, notes: `Rescheduled by transport office on ${new Date().toLocaleString()}` } : b
-    );
-    this.save();
+  private static saveLocalBooking(booking: Booking) {
+    localStore.bookings.unshift(booking);
+    localStorage.setItem('htm_bookings', JSON.stringify(localStore.bookings));
   }
 
-  static updateBookingStatus(bookingId: string, status: BookingStatus, metadata?: Partial<Booking>): void {
-    const booking = this._bookings.find(b => b.id === bookingId);
-    if (!booking) return;
-
-    if (status === BookingStatus.ON_TRIP) {
-      if (booking.assignedVehicleId) {
-        this._vehicles = this._vehicles.map(v => v.id === booking.assignedVehicleId ? { ...v, status: 'BUSY' } : v);
+  static async updateBookingStatus(bookingId: string, status: BookingStatus, metadata?: Partial<Booking>): Promise<void> {
+    if (!isFirebaseConfigured) {
+      const index = localStore.bookings.findIndex(b => b.id === bookingId);
+      if (index !== -1) {
+        localStore.bookings[index] = { ...localStore.bookings[index], status, ...metadata };
+        localStorage.setItem('htm_bookings', JSON.stringify(localStore.bookings));
       }
-      if (booking.assignedDriverId) {
-        this._drivers = this._drivers.map(d => d.id === booking.assignedDriverId ? { ...d, status: 'ON_DUTY' } : d);
-      }
-    } else if (status === BookingStatus.COMPLETED || status === BookingStatus.CANCELLED) {
-      if (booking.assignedVehicleId) {
-        this._vehicles = this._vehicles.map(v => v.id === booking.assignedVehicleId ? { ...v, status: 'AVAILABLE' } : v);
-      }
-      if (booking.assignedDriverId) {
-        this._drivers = this._drivers.map(d => d.id === booking.assignedDriverId ? { ...d, status: 'AVAILABLE' } : d);
-      }
+      return;
     }
 
-    this._bookings = this._bookings.map(b => 
-      b.id === bookingId ? { ...b, status, ...metadata } : b
-    );
-    this.save();
+    try {
+      const bookingRef = doc(db, "bookings", bookingId);
+      const bookingSnap = await getDoc(bookingRef);
+      if (!bookingSnap.exists()) return;
+      const booking = bookingSnap.data() as Booking;
+
+      const updates: Partial<Booking> = { status, ...metadata };
+
+      if (status === BookingStatus.ON_TRIP) {
+        if (booking.assignedVehicleId) {
+          await updateDoc(doc(db, "vehicles", booking.assignedVehicleId), { status: 'BUSY' });
+        }
+        if (booking.assignedDriverId) {
+          await updateDoc(doc(db, "drivers", booking.assignedDriverId), { status: 'ON_DUTY' });
+        }
+      } else if (status === BookingStatus.COMPLETED || status === BookingStatus.CANCELLED) {
+        if (booking.assignedVehicleId) {
+          await updateDoc(doc(db, "vehicles", booking.assignedVehicleId), { status: 'AVAILABLE' });
+        }
+        if (booking.assignedDriverId) {
+          await updateDoc(doc(db, "drivers", booking.assignedDriverId), { status: 'AVAILABLE' });
+        }
+      }
+
+      await updateDoc(bookingRef, updates);
+    } catch (e) {
+      console.error("Update failed", e);
+    }
   }
 
-  static assignVehicleAndDriver(bookingId: string, vehicleId: string, driverId: string): void {
-    this._bookings = this._bookings.map(b => 
-      b.id === bookingId ? { 
-        ...b, 
+  static async assignVehicleAndDriver(bookingId: string, vehicleId: string, driverId: string): Promise<void> {
+    if (!isFirebaseConfigured) {
+      const index = localStore.bookings.findIndex(b => b.id === bookingId);
+      if (index !== -1) {
+        localStore.bookings[index] = { 
+          ...localStore.bookings[index], 
+          assignedVehicleId: vehicleId, 
+          assignedDriverId: driverId,
+          status: BookingStatus.CONFIRMED 
+        };
+        localStorage.setItem('htm_bookings', JSON.stringify(localStore.bookings));
+      }
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), { 
         assignedVehicleId: vehicleId, 
         assignedDriverId: driverId,
         status: BookingStatus.CONFIRMED 
-      } : b
-    );
-    this.save();
+      });
+    } catch (e) {
+      console.error("Assign failed", e);
+    }
   }
 
-  static getStats() {
-    const user = this.getCurrentUser();
-    const bookings = this.getAuthorizedBookings();
-    const vehicles = this.getVehicles();
+  static async rescheduleBooking(bookingId: string, startTime: string, endTime: string): Promise<void> {
+    if (!isFirebaseConfigured) {
+      const index = localStore.bookings.findIndex(b => b.id === bookingId);
+      if (index !== -1) {
+        localStore.bookings[index] = {
+          ...localStore.bookings[index],
+          startTime,
+          endTime,
+          notes: `Rescheduled by transport office on ${new Date().toLocaleString()}`
+        };
+        localStorage.setItem('htm_bookings', JSON.stringify(localStore.bookings));
+      }
+      return;
+    }
+    try {
+      await updateDoc(doc(db, "bookings", bookingId), {
+        startTime,
+        endTime,
+        notes: `Rescheduled by transport office on ${new Date().toLocaleString()}`
+      });
+    } catch (e) {
+      console.error("Reschedule failed", e);
+    }
+  }
+
+  static async getStats() {
+    const bookings = await this.getAuthorizedBookings();
+    const vehicles = await this.getVehicles();
     
     return {
       totalBookings: bookings.length,

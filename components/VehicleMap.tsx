@@ -1,19 +1,19 @@
 
 import React, { useEffect, useRef } from 'react';
 import L from 'leaflet';
-import { Booking, Vehicle } from '../types';
-import { HTMService } from '../store';
+import { Booking, Vehicle, Driver } from '../types';
 
 interface VehicleMapProps {
   activeTrips: Booking[];
+  vehicles: Vehicle[];
+  drivers: Driver[];
 }
 
-export const VehicleMap: React.FC<VehicleMapProps> = ({ activeTrips }) => {
+export const VehicleMap: React.FC<VehicleMapProps> = ({ activeTrips, vehicles, drivers }) => {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<L.Map | null>(null);
   const markersRef = useRef<{ [key: string]: L.Marker }>({});
 
-  // Hospital base location (Mock coordinates)
   const HOSPITAL_LAT = 37.7749;
   const HOSPITAL_LNG = -122.4194;
 
@@ -26,7 +26,6 @@ export const VehicleMap: React.FC<VehicleMapProps> = ({ activeTrips }) => {
         attribution: '&copy; OpenStreetMap contributors'
       }).addTo(mapInstance.current);
 
-      // Hospital Marker
       L.marker([HOSPITAL_LAT, HOSPITAL_LNG], {
         icon: L.divIcon({
           className: 'custom-div-icon',
@@ -37,10 +36,8 @@ export const VehicleMap: React.FC<VehicleMapProps> = ({ activeTrips }) => {
       }).addTo(mapInstance.current).bindPopup('Main Hospital Campus');
     }
 
-    // Update markers for active trips
     const currentTripIds = new Set(activeTrips.map(t => t.id));
 
-    // Remove stale markers
     Object.keys(markersRef.current).forEach(id => {
       if (!currentTripIds.has(id)) {
         markersRef.current[id].remove();
@@ -48,15 +45,13 @@ export const VehicleMap: React.FC<VehicleMapProps> = ({ activeTrips }) => {
       }
     });
 
-    // Add or update markers
     activeTrips.forEach(trip => {
-      // Mock "movement" based on trip ID and current time for demo
       const timeOffset = Date.now() / 10000;
       const lat = HOSPITAL_LAT + (Math.sin(timeOffset + parseInt(trip.id.split('-')[1] || '0') / 1000) * 0.02);
       const lng = HOSPITAL_LNG + (Math.cos(timeOffset + parseInt(trip.id.split('-')[1] || '0') / 1000) * 0.02);
 
-      const vehicle = HTMService.getVehicles().find(v => v.id === trip.assignedVehicleId);
-      const driver = HTMService.getDrivers().find(d => d.id === trip.assignedDriverId);
+      const vehicle = vehicles.find(v => v.id === trip.assignedVehicleId);
+      const driver = drivers.find(d => d.id === trip.assignedDriverId);
 
       if (markersRef.current[trip.id]) {
         markersRef.current[trip.id].setLatLng([lat, lng]);
@@ -78,11 +73,7 @@ export const VehicleMap: React.FC<VehicleMapProps> = ({ activeTrips }) => {
         markersRef.current[trip.id] = marker;
       }
     });
-
-    return () => {
-      // Clean up if needed, but usually we keep the map alive
-    };
-  }, [activeTrips]);
+  }, [activeTrips, vehicles, drivers]);
 
   return (
     <div className="relative w-full h-full min-h-[400px]">

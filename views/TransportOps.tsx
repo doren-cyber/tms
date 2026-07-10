@@ -10,6 +10,9 @@ export const TransportOps: React.FC = () => {
   const [selectedBookingId, setSelectedBookingId] = useState<string | null>(null);
   const [assignData, setAssignData] = useState({ vehicle: '', driver: '' });
   const [bookings, setBookings] = useState<Booking[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+  const [allUsers, setAllUsers] = useState<any[]>([]);
   const [viewDate, setViewDate] = useState<string>(new Date().toISOString().split('T')[0]);
   
   const [isCancelling, setIsCancelling] = useState(false);
@@ -20,17 +23,23 @@ export const TransportOps: React.FC = () => {
 
   useEffect(() => {
     refreshData();
-    // Setup interval for "real-time" update feel
     const interval = setInterval(() => {
-      if (activeTab === 'live') {
-        refreshData();
-      }
-    }, 5000);
+      refreshData();
+    }, 10000);
     return () => clearInterval(interval);
   }, [viewDate, activeTab]);
 
-  const refreshData = () => {
-    setBookings(HTMService.getBookings());
+  const refreshData = async () => {
+    const [b, v, d, u] = await Promise.all([
+      HTMService.getBookings(),
+      HTMService.getVehicles(),
+      HTMService.getDrivers(),
+      HTMService.getAllUsers()
+    ]);
+    setBookings(b);
+    setVehicles(v);
+    setDrivers(d);
+    setAllUsers(u);
   };
 
   const activeTrips = bookings.filter(b => b.status === BookingStatus.ON_TRIP);
@@ -42,8 +51,8 @@ export const TransportOps: React.FC = () => {
     return [BookingStatus.CONFIRMED, BookingStatus.ON_TRIP, BookingStatus.COMPLETED].includes(b.status) && bDate === viewDate;
   });
 
-  const availableVehicles = HTMService.getVehicles().filter(v => v.status === 'AVAILABLE' || v.id === assignData.vehicle);
-  const availableDrivers = HTMService.getDrivers().filter(d => d.status === 'AVAILABLE' || d.id === assignData.driver);
+  const availableVehicles = vehicles.filter(v => v.status === 'AVAILABLE' || v.id === assignData.vehicle);
+  const availableDrivers = drivers.filter(d => d.status === 'AVAILABLE' || d.id === assignData.driver);
 
   const selectedBooking = bookings.find(b => b.id === selectedBookingId);
 
@@ -54,8 +63,8 @@ export const TransportOps: React.FC = () => {
         driver: selectedBooking.assignedDriverId || '',
       });
       setNewTimes({
-        start: selectedBooking.startTime.slice(0, 16),
-        end: selectedBooking.endTime.slice(0, 16)
+        start: (selectedBooking.startTime || "").slice(0, 16),
+        end: (selectedBooking.endTime || "").slice(0, 16)
       });
       setIsCancelling(false);
       setIsRescheduling(false);
@@ -63,44 +72,44 @@ export const TransportOps: React.FC = () => {
     }
   }, [selectedBookingId, selectedBooking]);
 
-  const handleAssign = (e: React.FormEvent) => {
+  const handleAssign = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedBookingId && assignData.vehicle && assignData.driver) {
-      HTMService.assignVehicleAndDriver(selectedBookingId, assignData.vehicle, assignData.driver);
+      await HTMService.assignVehicleAndDriver(selectedBookingId, assignData.vehicle, assignData.driver);
       setSelectedBookingId(null);
       refreshData();
     }
   };
 
-  const handleQuickStart = (e: React.MouseEvent | React.FormEvent) => {
+  const handleQuickStart = async (e: React.MouseEvent | React.FormEvent) => {
     e.preventDefault();
     e.stopPropagation();
     if (selectedBookingId && assignData.vehicle && assignData.driver) {
-      HTMService.assignVehicleAndDriver(selectedBookingId, assignData.vehicle, assignData.driver);
-      HTMService.updateBookingStatus(selectedBookingId, BookingStatus.ON_TRIP);
+      await HTMService.assignVehicleAndDriver(selectedBookingId, assignData.vehicle, assignData.driver);
+      await HTMService.updateBookingStatus(selectedBookingId, BookingStatus.ON_TRIP);
       setSelectedBookingId(null);
       refreshData();
     }
   };
 
-  const handleStartConfirmedTrip = (e: React.MouseEvent, id: string) => {
+  const handleStartConfirmedTrip = async (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
-    HTMService.updateBookingStatus(id, BookingStatus.ON_TRIP);
+    await HTMService.updateBookingStatus(id, BookingStatus.ON_TRIP);
     refreshData();
   };
 
-  const handleReschedule = (e: React.FormEvent) => {
+  const handleReschedule = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedBookingId && newTimes.start && newTimes.end) {
-      HTMService.rescheduleBooking(selectedBookingId, new Date(newTimes.start).toISOString(), new Date(newTimes.end).toISOString());
+      await HTMService.rescheduleBooking(selectedBookingId, new Date(newTimes.start).toISOString(), new Date(newTimes.end).toISOString());
       setIsRescheduling(false);
       refreshData();
     }
   };
 
-  const handleUpdateStatus = (status: BookingStatus) => {
+  const handleUpdateStatus = async (status: BookingStatus) => {
     if (selectedBookingId) {
-      HTMService.updateBookingStatus(selectedBookingId, status);
+      await HTMService.updateBookingStatus(selectedBookingId, status);
       refreshData();
       if (status === BookingStatus.COMPLETED) {
         setSelectedBookingId(null);
@@ -108,10 +117,10 @@ export const TransportOps: React.FC = () => {
     }
   };
 
-  const handleConfirmCancel = (e: React.FormEvent) => {
+  const handleConfirmCancel = async (e: React.FormEvent) => {
     e.preventDefault();
     if (selectedBookingId && cancelReason.trim()) {
-      HTMService.updateBookingStatus(selectedBookingId, BookingStatus.CANCELLED, { cancelReason });
+      await HTMService.updateBookingStatus(selectedBookingId, BookingStatus.CANCELLED, { cancelReason });
       setSelectedBookingId(null);
       setIsCancelling(false);
       setCancelReason('');
@@ -119,8 +128,8 @@ export const TransportOps: React.FC = () => {
     }
   };
 
-  const getDriverName = (id?: string) => HTMService.getDrivers().find(d => d.id === id)?.name || 'Unknown';
-  const getVehiclePlate = (id?: string) => HTMService.getVehicles().find(v => v.id === id)?.plateNumber || 'Unknown';
+  const getDriverName = (id?: string) => drivers.find(d => d.id === id)?.name || 'Unknown';
+  const getVehiclePlate = (id?: string) => vehicles.find(v => v.id === id)?.plateNumber || 'Unknown';
 
   return (
     <div className="space-y-6">
@@ -141,7 +150,7 @@ export const TransportOps: React.FC = () => {
            </div>
            <div className="bg-white px-4 py-2 rounded-xl border border-slate-200 flex items-center gap-2 shadow-sm">
               <div className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></div>
-              <span className="text-sm font-bold text-slate-700">{HTMService.getVehicles().filter(v => v.status === 'AVAILABLE').length} Fleet Ready</span>
+              <span className="text-sm font-bold text-slate-700">{vehicles.filter(v => v.status === 'AVAILABLE').length} Fleet Ready</span>
            </div>
         </div>
       </div>
@@ -175,7 +184,7 @@ export const TransportOps: React.FC = () => {
         <div className="lg:col-span-2 space-y-4">
           {activeTab === 'live' && (
             <div className="bg-white rounded-[2rem] border border-slate-100 shadow-xl overflow-hidden mb-6 h-[450px]">
-               <VehicleMap activeTrips={activeTrips} />
+               <VehicleMap activeTrips={activeTrips} vehicles={vehicles} drivers={drivers} />
             </div>
           )}
 
@@ -206,9 +215,7 @@ export const TransportOps: React.FC = () => {
                     <div className="flex items-center gap-4 mt-3 pt-3 border-t border-slate-50">
                         <div className="flex items-center gap-1.5 text-[11px] font-bold text-slate-500">
                           <Icons.Users />
-                          <span>{HTMService.getAllUsers().find(u => u.id === booking.requesterId)?.name || 'Personnel'}</span>
-                          <span className="text-slate-300 mx-1">|</span>
-                          <span className="text-blue-600 font-black">{HTMService.getDepartments().find(d => d.id === booking.departmentId)?.name}</span>
+                          <span>{allUsers.find(u => u.id === booking.requesterId)?.name || 'Personnel'}</span>
                         </div>
                     </div>
 
@@ -366,11 +373,6 @@ export const TransportOps: React.FC = () => {
                         This request is awaiting logistics confirmation. Assign a fleet member to move to the CONFIRMED stage.
                        </p>
                     </div>
-                  )}
-                  {selectedBooking?.status === BookingStatus.COMPLETED && (
-                     <div className="bg-slate-50 p-4 rounded-2xl border border-slate-100 text-center">
-                        <p className="text-xs font-bold text-slate-500">Service completed and logged.</p>
-                     </div>
                   )}
                 </div>
 

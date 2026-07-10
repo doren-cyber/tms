@@ -1,16 +1,37 @@
 
-import React, { useMemo } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { HTMService } from '../store';
-import { BookingStatus, UserRole } from '../types';
+import { Booking, BookingStatus, Department, User, Vehicle, Driver } from '../types';
 import { Icons } from '../constants';
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts';
 
 export const Reports: React.FC = () => {
-  const allBookings = HTMService.getBookings();
-  const departments = HTMService.getDepartments();
-  const users = HTMService.getAllUsers();
+  const [allBookings, setAllBookings] = useState<Booking[]>([]);
+  const [departments, setDepartments] = useState<Department[]>([]);
+  const [users, setUsers] = useState<User[]>([]);
+  const [vehicles, setVehicles] = useState<Vehicle[]>([]);
+  const [drivers, setDrivers] = useState<Driver[]>([]);
+
+  useEffect(() => {
+    // Properly fetch all required data asynchronously
+    const fetchData = async () => {
+      const [b, d, u, v, dr] = await Promise.all([
+        HTMService.getBookings(),
+        HTMService.getDepartments(),
+        HTMService.getAllUsers(),
+        HTMService.getVehicles(),
+        HTMService.getDrivers()
+      ]);
+      setAllBookings(b);
+      setDepartments(d);
+      setUsers(u);
+      setVehicles(v);
+      setDrivers(dr);
+    };
+    fetchData();
+  }, []);
   
-  const completedServices = allBookings.filter(b => b.status === BookingStatus.COMPLETED);
+  const completedServices = useMemo(() => allBookings.filter(b => b.status === BookingStatus.COMPLETED), [allBookings]);
   
   // Data for Department-wise Usage
   const deptUsageData = useMemo(() => {
@@ -63,7 +84,7 @@ export const Reports: React.FC = () => {
         </div>
         <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
            <p className="text-xs font-black text-blue-600 uppercase tracking-widest">Active Fleet</p>
-           <h3 className="text-3xl font-black text-blue-600 mt-2">{HTMService.getVehicles().length}</h3>
+           <h3 className="text-3xl font-black text-blue-600 mt-2">{vehicles.length}</h3>
            <p className="text-xs text-blue-500 mt-2 font-medium">Registered hospital vehicles</p>
         </div>
       </div>
@@ -168,8 +189,8 @@ export const Reports: React.FC = () => {
                     </td>
                     <td className="px-6 py-5">
                       <div className="text-xs">
-                        <p className="font-bold text-slate-800">{HTMService.getVehicles().find(v => v.id === booking.assignedVehicleId)?.plateNumber || 'N/A'}</p>
-                        <p className="text-slate-400">{HTMService.getDrivers().find(d => d.id === booking.assignedDriverId)?.name || 'N/A'}</p>
+                        <p className="font-bold text-slate-800">{vehicles.find(v => v.id === booking.assignedVehicleId)?.plateNumber || 'N/A'}</p>
+                        <p className="text-slate-400">{drivers.find(d => d.id === booking.assignedDriverId)?.name || 'N/A'}</p>
                       </div>
                     </td>
                     <td className="px-6 py-5">
