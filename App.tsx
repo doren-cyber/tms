@@ -20,20 +20,54 @@ const App: React.FC = () => {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    const initApp = async () => {
-      await HTMService.init();
-      const allUsers = await HTMService.getAllUsers();
-      setUsers(allUsers);
+    let active = true;
 
-      const saved = localStorage.getItem('htm_user');
-      if (saved) {
-        const user = JSON.parse(saved);
-        setCurrentUser(user);
-        HTMService.setCurrentUser(user);
+    const initApp = async () => {
+      try {
+        await HTMService.init();
+        const allUsers = await HTMService.getAllUsers();
+        if (active) {
+          setUsers(allUsers);
+
+          const saved = localStorage.getItem('htm_user');
+          if (saved) {
+            const user = JSON.parse(saved);
+            setCurrentUser(user);
+            HTMService.setCurrentUser(user);
+          }
+        }
+      } catch (error) {
+        console.error("Initialization failed, loading local system:", error);
+      } finally {
+        if (active) {
+          setIsLoading(false);
+        }
       }
-      setIsLoading(false);
     };
-    initApp();
+
+    // Safety timeout: force loading screen to disappear after 3.5s under any condition
+    const safetyTimeout = setTimeout(async () => {
+      if (active && isLoading) {
+        console.warn("Forcing application to load due to connection response delay.");
+        try {
+          const allUsers = await HTMService.getAllUsers();
+          setUsers(allUsers);
+        } catch (e) {
+          console.error("Safety timeout fallback users load failed", e);
+        } finally {
+          setIsLoading(false);
+        }
+      }
+    }, 3500);
+
+    initApp().then(() => {
+      clearTimeout(safetyTimeout);
+    });
+
+    return () => {
+      active = false;
+      clearTimeout(safetyTimeout);
+    };
   }, []);
 
   const handleLogin = (user: User) => {

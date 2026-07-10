@@ -25,6 +25,21 @@ const isFirebaseConfigured =
 const app = initializeApp(firebaseConfig);
 const db = getFirestore(app);
 
+// Helper to prevent database calls from blocking the application indefinitely
+const promiseWithTimeout = <T>(promise: Promise<T>, ms: number, fallback: T): Promise<T> => {
+  let timeoutId: any;
+  const timeoutPromise = new Promise<T>((resolve) => {
+    timeoutId = setTimeout(() => {
+      console.warn(`Firebase operation timed out after ${ms}ms, using offline fallback.`);
+      resolve(fallback);
+    }, ms);
+  });
+  return Promise.race([promise, timeoutPromise]).then((val) => {
+    clearTimeout(timeoutId);
+    return val;
+  });
+};
+
 // Mock Data Constants (used for initial seeding)
 const MOCK_DEPARTMENTS: Department[] = [
   { id: 'dept-1', name: 'Emergency Services', headId: 'user-2' },
@@ -76,7 +91,11 @@ export class HTMService {
     }
 
     try {
-      const usersSnapshot = await getDocs(collection(db, "users"));
+      const usersSnapshot = await promiseWithTimeout(
+        getDocs(collection(db, "users")),
+        3000,
+        { empty: false } as any
+      );
       if (usersSnapshot.empty) {
         console.log("Seeding database...");
         await Promise.all([
@@ -102,8 +121,10 @@ export class HTMService {
   static async getAllUsers(): Promise<User[]> {
     if (!isFirebaseConfigured) return localStore.users;
     try {
-      const snapshot = await getDocs(collection(db, "users"));
-      return snapshot.docs.map(doc => doc.data() as User);
+      const fetchPromise = getDocs(collection(db, "users")).then(snapshot => 
+        snapshot.docs.map(doc => doc.data() as User)
+      );
+      return await promiseWithTimeout(fetchPromise, 3000, localStore.users);
     } catch (e) {
       return localStore.users;
     }
@@ -134,8 +155,10 @@ export class HTMService {
     if (!isFirebaseConfigured) return localStore.bookings;
     try {
       const q = query(collection(db, "bookings"), orderBy("createdAt", "desc"));
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => doc.data() as Booking);
+      const fetchPromise = getDocs(q).then(snapshot => 
+        snapshot.docs.map(doc => doc.data() as Booking)
+      );
+      return await promiseWithTimeout(fetchPromise, 3000, localStore.bookings);
     } catch (e) {
       return localStore.bookings;
     }
@@ -165,8 +188,10 @@ export class HTMService {
         q = query(collection(db, "bookings"), where("requesterId", "==", user.id), orderBy("createdAt", "desc"));
       }
 
-      const snapshot = await getDocs(q);
-      return snapshot.docs.map(doc => doc.data() as Booking);
+      const fetchPromise = getDocs(q).then(snapshot => 
+        snapshot.docs.map(doc => doc.data() as Booking)
+      );
+      return await promiseWithTimeout(fetchPromise, 3000, localStore.bookings);
     } catch (e) {
       return this.getBookings(); // Fallback to all if query fails
     }
@@ -175,8 +200,10 @@ export class HTMService {
   static async getVehicles(): Promise<Vehicle[]> {
     if (!isFirebaseConfigured) return localStore.vehicles;
     try {
-      const snapshot = await getDocs(collection(db, "vehicles"));
-      return snapshot.docs.map(doc => doc.data() as Vehicle);
+      const fetchPromise = getDocs(collection(db, "vehicles")).then(snapshot => 
+        snapshot.docs.map(doc => doc.data() as Vehicle)
+      );
+      return await promiseWithTimeout(fetchPromise, 3000, localStore.vehicles);
     } catch (e) {
       return localStore.vehicles;
     }
@@ -185,8 +212,10 @@ export class HTMService {
   static async getDrivers(): Promise<Driver[]> {
     if (!isFirebaseConfigured) return localStore.drivers;
     try {
-      const snapshot = await getDocs(collection(db, "drivers"));
-      return snapshot.docs.map(doc => doc.data() as Driver);
+      const fetchPromise = getDocs(collection(db, "drivers")).then(snapshot => 
+        snapshot.docs.map(doc => doc.data() as Driver)
+      );
+      return await promiseWithTimeout(fetchPromise, 3000, localStore.drivers);
     } catch (e) {
       return localStore.drivers;
     }
@@ -195,8 +224,10 @@ export class HTMService {
   static async getDepartments(): Promise<Department[]> {
     if (!isFirebaseConfigured) return localStore.departments;
     try {
-      const snapshot = await getDocs(collection(db, "departments"));
-      return snapshot.docs.map(doc => doc.data() as Department);
+      const fetchPromise = getDocs(collection(db, "departments")).then(snapshot => 
+        snapshot.docs.map(doc => doc.data() as Department)
+      );
+      return await promiseWithTimeout(fetchPromise, 3000, localStore.departments);
     } catch (e) {
       return localStore.departments;
     }
