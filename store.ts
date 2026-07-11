@@ -221,6 +221,49 @@ export class HTMService {
     }
   }
 
+  static async createDriver(driverData: Partial<Driver>): Promise<Driver> {
+    const id = `d-${Date.now()}`;
+    const newDriver: Driver = {
+      id,
+      name: driverData.name || 'New Personnel',
+      licenseNumber: driverData.licenseNumber || '',
+      status: driverData.status || 'AVAILABLE',
+      shift: driverData.shift || 'MORNING',
+      phone: driverData.phone || '',
+    };
+
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "drivers", id), newDriver);
+      } catch (e) {
+        console.error("Firebase createDriver failed, using localStore fallback", e);
+      }
+    }
+    
+    // Always keep localStore sync'd as fallback
+    const index = localStore.drivers.findIndex(d => d.id === id);
+    if (index === -1) {
+      localStore.drivers.push(newDriver);
+    }
+    return newDriver;
+  }
+
+  static async updateDriver(driverId: string, updates: Partial<Driver>): Promise<void> {
+    const index = localStore.drivers.findIndex(d => d.id === driverId);
+    if (index !== -1) {
+      localStore.drivers[index] = { ...localStore.drivers[index], ...updates };
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "drivers", driverId), { ...localStore.drivers[index], ...updates }, { merge: true });
+      } catch (e) {
+        console.error("Firebase updateDriver failed", e);
+      }
+    }
+  }
+
+
   static async getDepartments(): Promise<Department[]> {
     if (!isFirebaseConfigured) return localStore.departments;
     try {
