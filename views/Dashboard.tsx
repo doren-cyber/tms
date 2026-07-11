@@ -44,6 +44,20 @@ export const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
 
   return (
     <div className="space-y-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-6 md:p-8 rounded-3xl border border-slate-100 shadow-sm">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-900">Welcome, {user.name}</h2>
+          <p className="text-slate-500 text-sm mt-1">Hospital Transport Management & Vehicle Booking System</p>
+        </div>
+        <button 
+          onClick={() => onViewChange && onViewChange('bookings')}
+          className="bg-blue-600 text-white px-5 py-2.5 rounded-xl font-bold text-sm hover:bg-blue-700 shadow-lg shadow-blue-200 transition-all flex items-center gap-2 whitespace-nowrap"
+        >
+          <Icons.Plus />
+          <span>Book a Vehicle</span>
+        </button>
+      </div>
+
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
         <DashboardCard 
           title={user.role === UserRole.DEPT_HEAD ? "Dept. Bookings" : "Total Bookings"} 

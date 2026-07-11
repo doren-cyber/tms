@@ -16,7 +16,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onV
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard, roles: [UserRole.STAFF, UserRole.DEPT_HEAD, UserRole.OPERATOR, UserRole.TRANSPORT_HEAD, UserRole.ADMIN] },
-    { id: 'bookings', label: 'My Bookings', icon: Icons.Booking, roles: [UserRole.STAFF, UserRole.DEPT_HEAD] },
+    { id: 'bookings', label: user.role === UserRole.STAFF || user.role === UserRole.DEPT_HEAD ? 'My Bookings' : 'Vehicle Bookings', icon: Icons.Booking, roles: [UserRole.STAFF, UserRole.DEPT_HEAD, UserRole.OPERATOR, UserRole.TRANSPORT_HEAD, UserRole.ADMIN] },
     { id: 'approvals', label: 'Approvals', icon: Icons.Check, roles: [UserRole.DEPT_HEAD, UserRole.ADMIN] },
     { id: 'transport-ops', label: 'Operations', icon: Icons.Vehicle, roles: [UserRole.OPERATOR, UserRole.TRANSPORT_HEAD, UserRole.ADMIN] },
     { id: 'vehicles', label: 'Vehicles', icon: Icons.Vehicle, roles: [UserRole.TRANSPORT_HEAD, UserRole.ADMIN] },
