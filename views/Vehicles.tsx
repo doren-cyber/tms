@@ -160,7 +160,7 @@ export const Vehicles: React.FC = () => {
                  <div className="flex items-center gap-2">
                    <button 
                      onClick={() => handleOpenEdit(vehicle)}
-                     className="p-1.5 text-slate-300 hover:text-blue-600 rounded-lg hover:bg-slate-50 transition-all opacity-0 group-hover:opacity-100"
+                     className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"
                      title="Edit Vehicle"
                    >
                      <Icons.Settings />

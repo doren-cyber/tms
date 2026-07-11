@@ -155,7 +155,7 @@ export const Drivers: React.FC = () => {
                   <td className="px-8 py-5 text-right">
                      <button 
                        onClick={() => handleOpenEdit(driver)}
-                       className="p-2 text-slate-300 hover:text-blue-600 transition-colors animate-in"
+                       className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"
                      >
                         <Icons.Settings />
                      </button>
