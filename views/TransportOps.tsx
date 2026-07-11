@@ -262,8 +262,8 @@ export const TransportOps: React.FC = () => {
           )}
         </div>
 
-        <div className="space-y-4">
-          <div className="bg-white rounded-3xl p-8 border border-slate-100 shadow-xl sticky top-24 min-h-[500px]">
+        <div className={selectedBookingId ? "fixed inset-0 bg-slate-900/50 backdrop-blur-xs z-50 flex items-end sm:items-center justify-center p-4 lg:relative lg:inset-auto lg:bg-transparent lg:backdrop-filter-none lg:z-auto lg:flex-none lg:p-0" : "hidden lg:block space-y-4"}>
+          <div className="bg-white rounded-t-3xl sm:rounded-3xl p-6 sm:p-8 border border-slate-100 shadow-xl lg:sticky lg:top-24 w-full max-w-lg lg:max-w-none max-h-[90vh] lg:max-h-none overflow-y-auto custom-scrollbar lg:min-h-[500px]">
             {!selectedBookingId ? (
               <div className="text-center py-20">
                 <div className="w-16 h-16 bg-slate-50 rounded-full flex items-center justify-center mx-auto text-slate-300 mb-4">

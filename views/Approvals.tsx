@@ -67,97 +67,179 @@ export const Approvals: React.FC = () => {
         </div>
       ) : (
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden animate-in fade-in duration-300">
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase text-xs font-bold tracking-wider">
-              <tr>
-                <th className="px-6 py-4">Request Details</th>
-                <th className="px-6 py-4">Time</th>
-                <th className="px-6 py-4">Priority</th>
-                <th className="px-6 py-4 text-right">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100">
-              {pending.map((booking) => (
-                <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-6 py-8">
-                    <div className="flex gap-4">
-                      <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
-                        <Icons.Booking />
-                      </div>
-                      <div>
-                        <p className="font-bold text-slate-800">{booking.purpose}</p>
-                        <p className="text-sm text-slate-500 mt-1">From: {booking.pickupLocation} → To: {booking.dropLocation}</p>
-                        <div className="flex items-center gap-2 mt-2">
-                           <div className="w-6 h-6 rounded-full bg-slate-200 overflow-hidden">
-                              <img src={`https://picsum.photos/seed/${booking.requesterId}/50/50`} alt="" />
-                           </div>
-                           <span className="text-xs font-semibold text-slate-600">
-                             {/* Use the users state which was fetched in useEffect */}
-                             Requested by: {users.find(u => u.id === booking.requesterId)?.name || 'Personnel'}
-                           </span>
-                        </div>
-                      </div>
-                    </div>
-                  </td>
-                  <td className="px-6 py-8">
-                    <div className="space-y-1">
-                      <p className="font-bold text-slate-800">{new Date(booking.startTime).toLocaleDateString()}</p>
-                      <p className="text-sm text-slate-500">{new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
-                    </div>
-                  </td>
-                  <td className="px-6 py-8">
-                    <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${
-                      booking.priority === PriorityLevel.EMERGENCY ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-600'
-                    }`}>
-                      {booking.priority}
-                    </span>
-                  </td>
-                  <td className="px-6 py-8 text-right">
-                    {confirmingAction?.id === booking.id ? (
-                      <div className="flex flex-col items-end gap-2 animate-in slide-in-from-right-2">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
-                          Confirm {confirmingAction.type}?
-                        </p>
-                        <div className="flex items-center gap-2">
-                          <button 
-                            onClick={() => handleAction(booking.id, confirmingAction.type === 'approve')}
-                            className={`px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-all shadow-lg active:scale-95 ${
-                              confirmingAction.type === 'approve' ? 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700' : 'bg-red-600 shadow-red-100 hover:bg-red-700'
-                            }`}
-                          >
-                            Yes, {confirmingAction.type}
-                          </button>
-                          <button 
-                            onClick={() => setConfirmingAction(null)}
-                            className="px-4 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all active:scale-95"
-                          >
-                            Cancel
-                          </button>
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="flex items-center justify-end gap-3">
-                        <button 
-                          onClick={() => setConfirmingAction({ id: booking.id, type: 'approve' })}
-                          className="p-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-xl transition-all shadow-sm active:scale-95 group"
-                          title="Approve Request"
-                        >
-                          <Icons.Check />
-                        </button>
-                        <button 
-                          onClick={() => setConfirmingAction({ id: booking.id, type: 'reject' })}
-                          className="p-3 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl transition-all shadow-sm active:scale-95 group"
-                          title="Reject Request"
-                        >
-                          <Icons.X />
-                        </button>
-                      </div>
-                    )}
-                  </td>
+          {/* Desktop Table View */}
+          <div className="hidden md:block">
+            <table className="w-full text-left">
+              <thead className="bg-slate-50 border-b border-slate-100 text-slate-500 uppercase text-xs font-bold tracking-wider">
+                <tr>
+                  <th className="px-6 py-4">Request Details</th>
+                  <th className="px-6 py-4">Time</th>
+                  <th className="px-6 py-4">Priority</th>
+                  <th className="px-6 py-4 text-right">Action</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {pending.map((booking) => (
+                  <tr key={booking.id} className="hover:bg-slate-50/50 transition-colors">
+                    <td className="px-6 py-8">
+                      <div className="flex gap-4">
+                        <div className="w-12 h-12 rounded-xl bg-blue-100 flex items-center justify-center text-blue-600 flex-shrink-0">
+                          <Icons.Booking />
+                        </div>
+                        <div>
+                          <p className="font-bold text-slate-800">{booking.purpose}</p>
+                          <p className="text-sm text-slate-500 mt-1">From: {booking.pickupLocation} → To: {booking.dropLocation}</p>
+                          <div className="flex items-center gap-2 mt-2">
+                             <div className="w-6 h-6 rounded-full bg-slate-200 overflow-hidden">
+                                <img src={`https://picsum.photos/seed/${booking.requesterId}/50/50`} alt="" />
+                             </div>
+                             <span className="text-xs font-semibold text-slate-600">
+                               Requested by: {users.find(u => u.id === booking.requesterId)?.name || 'Personnel'}
+                             </span>
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="px-6 py-8">
+                      <div className="space-y-1">
+                        <p className="font-bold text-slate-800">{new Date(booking.startTime).toLocaleDateString()}</p>
+                        <p className="text-sm text-slate-500">{new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                      </div>
+                    </td>
+                    <td className="px-6 py-8">
+                      <span className={`px-4 py-1.5 rounded-full text-xs font-black uppercase tracking-wider ${
+                        booking.priority === PriorityLevel.EMERGENCY ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-600'
+                      }`}>
+                        {booking.priority}
+                      </span>
+                    </td>
+                    <td className="px-6 py-8 text-right">
+                      {confirmingAction?.id === booking.id ? (
+                        <div className="flex flex-col items-end gap-2 animate-in slide-in-from-right-2">
+                          <p className="text-[10px] font-black uppercase tracking-widest text-slate-400">
+                            Confirm {confirmingAction.type}?
+                          </p>
+                          <div className="flex items-center gap-2">
+                            <button 
+                              onClick={() => handleAction(booking.id, confirmingAction.type === 'approve')}
+                              className={`px-4 py-1.5 rounded-lg text-xs font-bold text-white transition-all shadow-lg active:scale-95 ${
+                                confirmingAction.type === 'approve' ? 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700' : 'bg-red-600 shadow-red-100 hover:bg-red-700'
+                              }`}
+                            >
+                              Yes, {confirmingAction.type}
+                            </button>
+                            <button 
+                              onClick={() => setConfirmingAction(null)}
+                              className="px-4 py-1.5 rounded-lg text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all active:scale-95"
+                            >
+                              Cancel
+                            </button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="flex items-center justify-end gap-3">
+                          <button 
+                            onClick={() => setConfirmingAction({ id: booking.id, type: 'approve' })}
+                            className="p-3 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-xl transition-all shadow-sm active:scale-95 group"
+                            title="Approve Request"
+                          >
+                            <Icons.Check />
+                          </button>
+                          <button 
+                            onClick={() => setConfirmingAction({ id: booking.id, type: 'reject' })}
+                            className="p-3 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl transition-all shadow-sm active:scale-95 group"
+                            title="Reject Request"
+                          >
+                            <Icons.X />
+                          </button>
+                        </div>
+                      )}
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+
+          {/* Mobile Card View */}
+          <div className="block md:hidden divide-y divide-slate-100">
+            {pending.map((booking) => (
+              <div key={booking.id} className="p-6 space-y-4">
+                <div className="flex justify-between items-start">
+                  <div className="flex gap-3">
+                    <div className="w-10 h-10 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
+                      <Icons.Booking />
+                    </div>
+                    <div>
+                      <h4 className="font-bold text-slate-800">{booking.purpose}</h4>
+                      <p className="text-xs text-slate-500 mt-0.5">{booking.pickupLocation} → {booking.dropLocation}</p>
+                    </div>
+                  </div>
+                  <span className={`px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider shrink-0 ${
+                    booking.priority === PriorityLevel.EMERGENCY ? 'bg-red-500 text-white animate-pulse' : 'bg-slate-100 text-slate-600'
+                  }`}>
+                    {booking.priority}
+                  </span>
+                </div>
+
+                <div className="flex items-center justify-between text-xs pt-2 border-t border-slate-50">
+                  <div className="space-y-1">
+                    <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider">Date & Time</p>
+                    <p className="font-bold text-slate-700">{new Date(booking.startTime).toLocaleDateString()} {new Date(booking.startTime).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <div className="w-5 h-5 rounded-full bg-slate-200 overflow-hidden shrink-0">
+                      <img src={`https://picsum.photos/seed/${booking.requesterId}/50/50`} alt="" />
+                    </div>
+                    <span className="text-[11px] font-medium text-slate-600 truncate max-w-[120px]">
+                      {users.find(u => u.id === booking.requesterId)?.name || 'Personnel'}
+                    </span>
+                  </div>
+                </div>
+
+                <div className="pt-3 border-t border-slate-50">
+                  {confirmingAction?.id === booking.id ? (
+                    <div className="flex flex-col items-stretch gap-2 animate-in slide-in-from-bottom-2">
+                      <p className="text-[10px] font-black uppercase tracking-widest text-slate-400 text-center">
+                        Confirm {confirmingAction.type}?
+                      </p>
+                      <div className="grid grid-cols-2 gap-2">
+                        <button 
+                          onClick={() => handleAction(booking.id, confirmingAction.type === 'approve')}
+                          className={`py-2 px-4 rounded-xl text-xs font-bold text-white transition-all shadow-lg active:scale-95 text-center ${
+                            confirmingAction.type === 'approve' ? 'bg-emerald-600 shadow-emerald-100 hover:bg-emerald-700' : 'bg-red-600 shadow-red-100 hover:bg-red-700'
+                          }`}
+                        >
+                          Yes, {confirmingAction.type}
+                        </button>
+                        <button 
+                          onClick={() => setConfirmingAction(null)}
+                          className="py-2 px-4 rounded-xl text-xs font-bold bg-slate-100 text-slate-600 hover:bg-slate-200 transition-all active:scale-95 text-center"
+                        >
+                          Cancel
+                        </button>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={() => setConfirmingAction({ id: booking.id, type: 'approve' })}
+                        className="flex items-center justify-center gap-2 py-2.5 bg-emerald-100 text-emerald-700 hover:bg-emerald-200 rounded-xl transition-all font-bold text-xs"
+                      >
+                        <Icons.Check /> Approve
+                      </button>
+                      <button 
+                        onClick={() => setConfirmingAction({ id: booking.id, type: 'reject' })}
+                        className="flex items-center justify-center gap-2 py-2.5 bg-red-100 text-red-700 hover:bg-red-200 rounded-xl transition-all font-bold text-xs"
+                      >
+                        <Icons.X /> Reject
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            ))}
+          </div>
         </div>
       )}
     </div>

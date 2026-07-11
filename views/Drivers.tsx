@@ -108,69 +108,129 @@ export const Drivers: React.FC = () => {
              <p className="text-slate-500 text-sm font-semibold">Loading personnel roster...</p>
           </div>
         ) : (
-          <table className="w-full text-left">
-            <thead className="bg-slate-50 border-b border-slate-100">
-              <tr>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Personnel</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">License</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
-                <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-50">
+          <div>
+            {/* Desktop Table View */}
+            <div className="hidden md:block">
+              <table className="w-full text-left">
+                <thead className="bg-slate-50 border-b border-slate-100">
+                  <tr>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Personnel</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">License</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Shift</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest">Status</th>
+                    <th className="px-8 py-5 text-[10px] font-black text-slate-400 uppercase tracking-widest text-right">Actions</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-50">
+                  {drivers.map(driver => (
+                    <tr key={driver.id} className="hover:bg-slate-50/50 transition-colors">
+                      <td className="px-8 py-5">
+                        <div className="flex items-center gap-4">
+                          <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
+                             <img src={`https://picsum.photos/seed/${driver.id}/100/100`} alt="" />
+                          </div>
+                          <div>
+                            <p className="font-bold text-slate-800">{driver.name}</p>
+                            <p className="text-xs text-slate-400">{driver.phone}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className="font-mono text-xs font-bold text-slate-500">{driver.licenseNumber}</span>
+                      </td>
+                      <td className="px-8 py-5">
+                        <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
+                          driver.shift === 'MORNING' ? 'bg-amber-50 text-amber-700' : 
+                          driver.shift === 'EVENING' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-800 text-white'
+                        }`}>
+                          {driver.shift}
+                        </span>
+                      </td>
+                      <td className="px-8 py-5">
+                         <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              driver.status === 'AVAILABLE' ? 'bg-emerald-500' : 
+                              driver.status === 'ON_DUTY' ? 'bg-blue-500 animate-pulse' : 'bg-slate-300'
+                            }`}></div>
+                            <span className="text-xs font-bold text-slate-700">{driver.status.replace('_', ' ')}</span>
+                         </div>
+                      </td>
+                      <td className="px-8 py-5 text-right">
+                         <button 
+                           onClick={() => handleOpenEdit(driver)}
+                           className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"
+                         >
+                            <Icons.Settings />
+                         </button>
+                      </td>
+                    </tr>
+                  ))}
+                  {drivers.length === 0 && (
+                    <tr>
+                      <td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium italic">
+                        No drivers found.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Mobile Cards View */}
+            <div className="block md:hidden divide-y divide-slate-100">
               {drivers.map(driver => (
-                <tr key={driver.id} className="hover:bg-slate-50/50 transition-colors">
-                  <td className="px-8 py-5">
-                    <div className="flex items-center gap-4">
-                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200">
-                         <img src={`https://picsum.photos/seed/${driver.id}/100/100`} alt="" />
+                <div key={driver.id} className="p-6 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-full bg-slate-100 overflow-hidden border border-slate-200 shrink-0">
+                        <img src={`https://picsum.photos/seed/${driver.id}/100/100`} alt="" />
                       </div>
                       <div>
                         <p className="font-bold text-slate-800">{driver.name}</p>
                         <p className="text-xs text-slate-400">{driver.phone}</p>
                       </div>
                     </div>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className="font-mono text-xs font-bold text-slate-500">{driver.licenseNumber}</span>
-                  </td>
-                  <td className="px-8 py-5">
-                    <span className={`px-3 py-1 rounded-lg text-[10px] font-black uppercase tracking-wider ${
-                      driver.shift === 'MORNING' ? 'bg-amber-50 text-amber-700' : 
-                      driver.shift === 'EVENING' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-800 text-white'
-                    }`}>
-                      {driver.shift}
-                    </span>
-                  </td>
-                  <td className="px-8 py-5">
-                     <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${
+                    <button 
+                      onClick={() => handleOpenEdit(driver)}
+                      className="p-2 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"
+                    >
+                      <Icons.Settings />
+                    </button>
+                  </div>
+                  <div className="grid grid-cols-3 gap-2 pt-2 border-t border-slate-50 text-xs">
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">License</p>
+                      <span className="font-mono text-slate-600 font-bold">{driver.licenseNumber}</span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Shift</p>
+                      <span className={`px-2 py-0.5 rounded-md text-[10px] font-bold uppercase tracking-wider ${
+                        driver.shift === 'MORNING' ? 'bg-amber-50 text-amber-700' : 
+                        driver.shift === 'EVENING' ? 'bg-indigo-50 text-indigo-700' : 'bg-slate-800 text-white'
+                      }`}>
+                        {driver.shift}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-black text-slate-400 uppercase tracking-wider mb-1">Status</p>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${
                           driver.status === 'AVAILABLE' ? 'bg-emerald-500' : 
                           driver.status === 'ON_DUTY' ? 'bg-blue-500 animate-pulse' : 'bg-slate-300'
                         }`}></div>
-                        <span className="text-xs font-bold text-slate-700">{driver.status.replace('_', ' ')}</span>
-                     </div>
-                  </td>
-                  <td className="px-8 py-5 text-right">
-                     <button 
-                       onClick={() => handleOpenEdit(driver)}
-                       className="p-1.5 text-slate-400 hover:text-blue-600 hover:bg-slate-50 rounded-lg transition-all"
-                     >
-                        <Icons.Settings />
-                     </button>
-                  </td>
-                </tr>
+                        <span className="font-bold text-slate-700">{driver.status.replace('_', ' ')}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
               ))}
               {drivers.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-8 py-12 text-center text-slate-400 font-medium italic">
-                    No drivers found.
-                  </td>
-                </tr>
+                <div className="p-8 text-center text-slate-400 font-medium italic">
+                  No drivers found.
+                </div>
               )}
-            </tbody>
-          </table>
+            </div>
+          </div>
         )}
       </div>
 

@@ -12,7 +12,16 @@ interface LayoutProps {
 }
 
 export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onViewChange, onLogout }) => {
-  const [isSidebarOpen, setIsSidebarOpen] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Set default sidebar state based on screen width
+  React.useEffect(() => {
+    if (window.innerWidth >= 768) {
+      setIsSidebarOpen(true);
+    } else {
+      setIsSidebarOpen(false);
+    }
+  }, []);
 
   const menuItems = [
     { id: 'dashboard', label: 'Dashboard', icon: Icons.Dashboard, roles: [UserRole.STAFF, UserRole.DEPT_HEAD, UserRole.OPERATOR, UserRole.TRANSPORT_HEAD, UserRole.ADMIN] },
@@ -25,11 +34,29 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onV
     { id: 'settings', label: 'Settings', icon: Icons.Settings, roles: [UserRole.ADMIN] },
   ];
 
+  const handleMenuItemClick = (viewId: string) => {
+    onViewChange(viewId);
+    if (window.innerWidth < 768) {
+      setIsSidebarOpen(false);
+    }
+  };
+
+  const sidebarWidthClass = isSidebarOpen ? 'w-64' : 'w-20';
+  const sidebarTransformClass = isSidebarOpen ? 'translate-x-0' : '-translate-x-full md:translate-x-0';
+
   return (
     <div className="flex h-screen overflow-hidden bg-slate-50">
+      {/* Mobile Sidebar Overlay */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)}
+          className="fixed inset-0 bg-slate-900/40 backdrop-blur-xs z-40 md:hidden"
+        />
+      )}
+
       {/* Sidebar */}
       <aside 
-        className={`${isSidebarOpen ? 'w-64' : 'w-20'} bg-slate-900 transition-all duration-300 flex flex-col h-full`}
+        className={`fixed inset-y-0 left-0 z-50 md:relative md:flex flex-col h-full bg-slate-900 transition-all duration-300 shrink-0 ${sidebarWidthClass} ${sidebarTransformClass}`}
       >
         <div className="p-6 flex items-center gap-3">
           <div className="w-8 h-8 bg-blue-500 rounded-lg flex items-center justify-center text-white font-bold">H</div>
@@ -40,7 +67,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onV
           {menuItems.filter(item => item.roles.includes(user.role)).map((item) => (
             <button
               key={item.id}
-              onClick={() => onViewChange(item.id)}
+              onClick={() => handleMenuItemClick(item.id)}
               className={`w-full flex items-center gap-4 px-4 py-3 rounded-xl transition-colors ${
                 currentView === item.id ? 'bg-blue-600 text-white' : 'text-slate-400 hover:bg-slate-800 hover:text-white'
               }`}
@@ -65,7 +92,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onV
       {/* Main Content */}
       <main className="flex-1 flex flex-col overflow-hidden">
         {/* Header */}
-        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-8 sticky top-0 z-10">
+        <header className="h-16 bg-white border-b border-slate-200 flex items-center justify-between px-4 md:px-8 sticky top-0 z-10">
           <div className="flex items-center gap-4">
             <button 
               onClick={() => setIsSidebarOpen(!isSidebarOpen)}
@@ -78,12 +105,12 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onV
             </h1>
           </div>
 
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4 md:gap-6">
             <button className="relative p-2 text-slate-500 hover:bg-slate-100 rounded-full">
               <Icons.Bell />
               <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full border-2 border-white"></span>
             </button>
-            <div className="flex items-center gap-3 border-l pl-6 border-slate-200">
+            <div className="flex items-center gap-3 border-l pl-4 md:pl-6 border-slate-200">
               <div className="text-right hidden md:block">
                 <p className="text-sm font-semibold text-slate-900 leading-tight">{user.name}</p>
                 <p className="text-xs text-slate-500">{user.role.replace('_', ' ')}</p>
@@ -96,7 +123,7 @@ export const Layout: React.FC<LayoutProps> = ({ children, user, currentView, onV
         </header>
 
         {/* Content Area */}
-        <div className="flex-1 overflow-y-auto p-8 custom-scrollbar bg-slate-50/50">
+        <div className="flex-1 overflow-y-auto p-4 md:p-8 custom-scrollbar bg-slate-50/50">
           {children}
         </div>
       </main>
