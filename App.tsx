@@ -152,7 +152,7 @@ const App: React.FC = () => {
 
   const renderView = () => {
     switch (currentView) {
-      case 'dashboard': return <Dashboard />;
+      case 'dashboard': return <Dashboard onViewChange={setCurrentView} />;
       case 'bookings': return <Bookings />;
       case 'approvals': return <Approvals />;
       case 'transport-ops': return <TransportOps />;

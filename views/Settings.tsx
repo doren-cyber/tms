@@ -15,6 +15,17 @@ export const Settings: React.FC = () => {
     departmentId: 'dept-1'
   });
 
+  // Edit User State
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editFormData, setEditFormData] = useState({
+    name: '',
+    email: '',
+    role: UserRole.STAFF,
+    departmentId: 'dept-1'
+  });
+  const [showConfirmDelete, setShowConfirmDelete] = useState(false);
+  const [saving, setSaving] = useState(false);
+
   useEffect(() => {
     // Properly initialize state with awaited data
     const init = async () => {
@@ -38,6 +49,46 @@ export const Settings: React.FC = () => {
     setShowAddUser(false);
     setFormData({ name: '', email: '', role: UserRole.STAFF, departmentId: 'dept-1' });
     await refreshUsers();
+  };
+
+  const handleOpenEditUser = (user: User) => {
+    setEditingUser(user);
+    setEditFormData({
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      departmentId: user.departmentId || 'dept-1'
+    });
+    setShowConfirmDelete(false);
+  };
+
+  const handleUpdateUser = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingUser) return;
+    setSaving(true);
+    try {
+      await HTMService.updateUser(editingUser.id, editFormData);
+      setEditingUser(null);
+      await refreshUsers();
+    } catch (error) {
+      console.error("Failed to update user", error);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDeleteUser = async () => {
+    if (!editingUser) return;
+    setSaving(true);
+    try {
+      await HTMService.deleteUser(editingUser.id);
+      setEditingUser(null);
+      await refreshUsers();
+    } catch (error) {
+      console.error("Failed to delete user", error);
+    } finally {
+      setSaving(false);
+    }
   };
 
   return (
@@ -113,7 +164,10 @@ export const Settings: React.FC = () => {
                     </div>
                   </td>
                   <td className="px-6 py-5 text-right">
-                     <button className="text-slate-400 hover:text-blue-600 p-2 transition-colors">
+                     <button 
+                       onClick={() => handleOpenEditUser(user)}
+                       className="text-slate-400 hover:text-blue-600 p-2 transition-colors"
+                     >
                        <Icons.Settings />
                      </button>
                   </td>
@@ -243,6 +297,128 @@ export const Settings: React.FC = () => {
                   className="flex-[2] py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-black shadow-xl shadow-slate-200 transition-all active:scale-[0.98]"
                 >
                   Confirm Registration
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {editingUser && (
+        <div className="fixed inset-0 bg-slate-900/60 backdrop-blur-sm z-50 flex items-center justify-center p-4">
+          <div className="bg-white rounded-[2.5rem] shadow-2xl w-full max-w-lg overflow-hidden animate-in zoom-in-95 duration-200">
+            <div className="p-8 border-b border-slate-100 flex justify-between items-center bg-slate-50/50">
+              <div>
+                <h3 className="text-xl font-black text-slate-800 tracking-tight">EDIT PERSONNEL</h3>
+                <p className="text-xs text-slate-400 font-bold uppercase tracking-widest mt-1">Personnel Detail Management</p>
+              </div>
+              <button onClick={() => setEditingUser(null)} className="w-10 h-10 flex items-center justify-center hover:bg-slate-200 rounded-full text-slate-500 transition-colors"><Icons.X /></button>
+            </div>
+            
+            <form onSubmit={handleUpdateUser} className="p-10 space-y-8">
+              <div className="space-y-6">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Full Name</label>
+                  <input 
+                    required
+                    type="text" 
+                    className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50/50 outline-none transition-all font-medium text-slate-800"
+                    placeholder="e.g. Dr. Jane Cooper"
+                    value={editFormData.name}
+                    onChange={e => setEditFormData({...editFormData, name: e.target.value})}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Email Address</label>
+                  <input 
+                    required
+                    type="email" 
+                    className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-blue-500 focus:bg-white focus:ring-4 focus:ring-blue-50/50 outline-none transition-all font-medium text-slate-800"
+                    placeholder="jane@hospital.com"
+                    value={editFormData.email}
+                    onChange={e => setEditFormData({...editFormData, email: e.target.value})}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Department</label>
+                    <select 
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-blue-500 focus:bg-white outline-none font-medium text-slate-800"
+                      value={editFormData.departmentId}
+                      onChange={e => setEditFormData({...editFormData, departmentId: e.target.value})}
+                    >
+                      {departments.map(d => <option key={d.id} value={d.id}>{d.name}</option>)}
+                    </select>
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Account Role</label>
+                    <select 
+                      className="w-full px-5 py-4 rounded-2xl bg-slate-50 border border-slate-100 focus:border-blue-500 focus:bg-white outline-none font-bold text-blue-600"
+                      value={editFormData.role}
+                      onChange={e => setEditFormData({...editFormData, role: e.target.value as UserRole})}
+                    >
+                      <option value={UserRole.STAFF}>End User / Staff</option>
+                      <option value={UserRole.DEPT_HEAD}>Department Head</option>
+                      <option value={UserRole.OPERATOR}>Transport Operator / Ops</option>
+                      <option value={UserRole.TRANSPORT_HEAD}>Transport Head</option>
+                      <option value={UserRole.ADMIN}>Administrator</option>
+                    </select>
+                  </div>
+                </div>
+              </div>
+
+              {showConfirmDelete ? (
+                <div className="bg-rose-50 p-6 rounded-3xl border border-rose-100 space-y-4">
+                  <p className="text-xs text-rose-800 font-bold leading-relaxed">
+                     Are you absolute sure you want to delete this user? This action is permanent and cannot be undone.
+                  </p>
+                  <div className="flex gap-3">
+                     <button
+                       type="button"
+                       onClick={() => setShowConfirmDelete(false)}
+                       className="px-4 py-2 bg-slate-100 text-slate-700 font-bold rounded-xl text-xs hover:bg-slate-200 transition-colors"
+                     >
+                       Cancel
+                     </button>
+                     <button
+                       type="button"
+                       onClick={handleDeleteUser}
+                       disabled={saving}
+                       className="px-4 py-2 bg-rose-600 text-white font-bold rounded-xl text-xs hover:bg-rose-700 transition-colors flex items-center gap-1.5"
+                     >
+                       {saving ? <div className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Yes, Permanently Delete"}
+                     </button>
+                  </div>
+                </div>
+              ) : (
+                <div className="flex justify-between items-center bg-slate-50 p-4 rounded-2xl border border-slate-100">
+                  <span className="text-xs text-slate-500 font-semibold">Need to remove this user from system?</span>
+                  <button
+                    type="button"
+                    onClick={() => setShowConfirmDelete(true)}
+                    className="px-3 py-1.5 bg-rose-50 text-rose-600 font-bold hover:bg-rose-100 transition-colors rounded-xl text-xs"
+                  >
+                    Delete User
+                  </button>
+                </div>
+              )}
+
+              <div className="pt-4 flex gap-4">
+                <button 
+                  type="button" 
+                  onClick={() => setEditingUser(null)} 
+                  className="flex-1 py-4 rounded-2xl font-bold text-slate-500 hover:bg-slate-100 transition-colors"
+                >
+                  Cancel
+                </button>
+                <button 
+                  type="submit" 
+                  disabled={saving}
+                  className="flex-[2] py-4 rounded-2xl bg-slate-900 text-white font-bold hover:bg-black shadow-xl shadow-slate-200 transition-all active:scale-[0.98] flex items-center justify-center gap-2"
+                >
+                  {saving ? <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : "Save Changes"}
                 </button>
               </div>
             </form>

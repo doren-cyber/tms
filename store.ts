@@ -1,7 +1,7 @@
 
 import { initializeApp } from "firebase/app";
 import { 
-  getFirestore, collection, getDocs, setDoc, doc, addDoc, updateDoc, query, where, orderBy, getDoc 
+  getFirestore, collection, getDocs, setDoc, doc, addDoc, updateDoc, query, where, orderBy, getDoc, deleteDoc 
 } from "firebase/firestore";
 import { 
   User, UserRole, Booking, BookingStatus, Vehicle, Driver, Department, 
@@ -151,6 +151,36 @@ export class HTMService {
     return newUser;
   }
 
+  static async updateUser(userId: string, updates: Partial<User>): Promise<void> {
+    const index = localStore.users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      localStore.users[index] = { ...localStore.users[index], ...updates };
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "users", userId), { ...localStore.users[index], ...updates }, { merge: true });
+      } catch (e) {
+        console.error("Firebase updateUser failed", e);
+      }
+    }
+  }
+
+  static async deleteUser(userId: string): Promise<void> {
+    const index = localStore.users.findIndex(u => u.id === userId);
+    if (index !== -1) {
+      localStore.users.splice(index, 1);
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        await deleteDoc(doc(db, "users", userId));
+      } catch (e) {
+        console.error("Firebase deleteUser failed", e);
+      }
+    }
+  }
+
   static async getBookings(): Promise<Booking[]> {
     if (!isFirebaseConfigured) return localStore.bookings;
     try {
@@ -206,6 +236,63 @@ export class HTMService {
       return await promiseWithTimeout(fetchPromise, 3000, localStore.vehicles);
     } catch (e) {
       return localStore.vehicles;
+    }
+  }
+
+  static async createVehicle(vehicleData: Partial<Vehicle>): Promise<Vehicle> {
+    const id = `v-${Date.now()}`;
+    const newVehicle: Vehicle = {
+      id,
+      plateNumber: vehicleData.plateNumber || '',
+      type: vehicleData.type || VehicleType.CAR,
+      capacity: vehicleData.capacity || 4,
+      status: vehicleData.status || 'AVAILABLE',
+      lastServiceDate: vehicleData.lastServiceDate || new Date().toISOString().split('T')[0],
+      equipmentLoad: vehicleData.equipmentLoad || 50
+    };
+
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "vehicles", id), newVehicle);
+      } catch (e) {
+        console.error("Firebase createVehicle failed, using localStore fallback", e);
+      }
+    }
+    
+    const index = localStore.vehicles.findIndex(v => v.id === id);
+    if (index === -1) {
+      localStore.vehicles.push(newVehicle);
+    }
+    return newVehicle;
+  }
+
+  static async updateVehicle(vehicleId: string, updates: Partial<Vehicle>): Promise<void> {
+    const index = localStore.vehicles.findIndex(v => v.id === vehicleId);
+    if (index !== -1) {
+      localStore.vehicles[index] = { ...localStore.vehicles[index], ...updates };
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        await setDoc(doc(db, "vehicles", vehicleId), { ...localStore.vehicles[index], ...updates }, { merge: true });
+      } catch (e) {
+        console.error("Firebase updateVehicle failed", e);
+      }
+    }
+  }
+
+  static async deleteVehicle(vehicleId: string): Promise<void> {
+    const index = localStore.vehicles.findIndex(v => v.id === vehicleId);
+    if (index !== -1) {
+      localStore.vehicles.splice(index, 1);
+    }
+
+    if (isFirebaseConfigured) {
+      try {
+        await deleteDoc(doc(db, "vehicles", vehicleId));
+      } catch (e) {
+        console.error("Firebase deleteVehicle failed", e);
+      }
     }
   }
 

@@ -16,7 +16,11 @@ const data = [
   { name: 'Sun', bookings: 34, trips: 43 },
 ];
 
-export const Dashboard: React.FC = () => {
+interface DashboardProps {
+  onViewChange?: (view: string) => void;
+}
+
+export const Dashboard: React.FC<DashboardProps> = ({ onViewChange }) => {
   const [stats, setStats] = useState({ totalBookings: 0, pendingApprovals: 0, activeTrips: 0, availableVehicles: 0 });
   const [authorizedBookings, setAuthorizedBookings] = useState<Booking[]>([]);
   const [allUsers, setAllUsers] = useState<any[]>([]);
@@ -118,7 +122,12 @@ export const Dashboard: React.FC = () => {
           <h3 className="text-lg font-bold text-slate-800">
             {user.role === UserRole.DEPT_HEAD ? "Departmental Requests" : "Recent Transport Requests"}
           </h3>
-          <button className="text-blue-600 font-semibold text-sm hover:underline">View All</button>
+          <button 
+            onClick={() => onViewChange && onViewChange('bookings')} 
+            className="text-blue-600 font-semibold text-sm hover:underline"
+          >
+            View All
+          </button>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left">
